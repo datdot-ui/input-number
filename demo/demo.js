@@ -2,18 +2,14 @@ const head = require('head')()
 const bel = require('bel')
 const csjs = require('csjs-inject')
 // datdot-ui dependences
-const logs = require('datdot-ui-logs')
-const i_input = require('..')
-const button = require('datdot-ui-button')
-const icon = require('datdot-ui-icon')
+const input_number = require('..')
 const message_maker = require('message-maker')
 
 var id = 0
+var count = 0
 
 function demo () {
-/* ------------------------------------------------
-                    <protocol>
------------------------------------------------- */
+// ---------------------------------------------------------------
     const myaddress = `demo-${id++}`
     const inbox = {}
     const outbox = {}
@@ -30,99 +26,48 @@ function demo () {
         const { head, refs, type, data, meta } = msg // receive msg
         const [from, to, msg_id] = head
         inbox[head.join('/')] = msg                  // store msg
-        const { notify: logs_notify, address: logs_address, make: logs_make } = recipients['logs']
-        logs_notify(logs_make({ to: logs_address, type, data }))
-        if (from === recipients['checkbox-terms']?.address) {
-            const { notify, make, address } = recipients['checkbox-terms']
-            notify(make({ to: address, type: 'test', data: 123, refs: {} }))
-        }
-        if (from === recipients['checkbox-newsletter']?.address) { }
-        else { }
+        if (type === 'input') console.log({ input: data.value })
     }
-/* ------------------------------------------------
-                    </protocol>
------------------------------------------------- */
-
-    const log_list = logs(make_protocol('logs'))
-    console.log({log_list})
-    const text = i_input({
-        name: 'text', 
-        role: 'input', 
-        type: 'text', 
-        value: 'hello', 
-        placeholder: 'take a cup of coffee', 
-        theme: { 
-            props: {
-            // border_width: '2px',
-            // border_color: 'var(--color-blue)',
-            // border_style: 'dashed',
-            // shadow_color: 'var(--color-blue)',
-            // shadow_opacity: '.65',
-            // shadow_offset_xy: '4px 4px',
-            }
-        } 
-    }, make_protocol('text'))
 // ---------------------------------------------------------------
-    const number = i_input({
-        name: 'number', 
-        role: 'input', 
-        type: 'number', 
-        value: '9.855521', 
-        step: '0.1000000005',
-        placeholder: 123, 
+    const input_1 = input_number({
+        value: 15, 
+        step: 1,
+        placeholder: 'type the number', 
         theme: {
             props: {
-                // border_width: '2px',
-                // border_color: 'var(--color-blue)',
-                // border_style: 'dashed',
-                // shadow_color: 'var(--color-blue)',
-                // shadow_opacity: '.65',
-                // shadow_offset_xy: '4px 4px',
+                border_width: '2px',
+                border_color: 'var(--color-blue)',
+                border_style: 'dashed',
+                shadow_color: 'var(--color-blue)',
+                shadow_opacity: '.65',
+                shadow_offset_xy: '4px 4px',
             }
         }
-    }, make_protocol('number'))
+    }, make_protocol(`input-${count++}`))
  // ---------------------------------------------------------------   
-    const decimal_number = i_input({
-        name: 'decimal number', 
-        role: 'input', 
-        type: 'number', 
-        step: '0.00000000000001',
-        placeholder: 99.5,
+    const input_2 = input_number({
+        value: 10,
+        step: 1.25,
+        placeholder: 'Type the number',
         theme: {
             props: {
-            // border_width: '2px',
-            // border_color: 'var(--color-blue)',
-            // border_style: 'dashed',
-            // shadow_color: 'var(--color-blue)',
-            // shadow_opacity: '.65',
-            // shadow_offset_xy: '4px 4px',
+            border_width: '2px',
+            border_color: 'var(--color-blue)',
+            border_style: 'dashed',
+            shadow_color: 'var(--color-blue)',
+            shadow_opacity: '.65',
+            shadow_offset_xy: '4px 4px',
             }
         }
-    }, make_protocol('decimal number'))
-    // ---------------------------------------------------------------
-    const checkbox_newsletter = i_input({
-        // name: 'checkbox-newsletter', 
-        // role: 'checkbox-newsletter', 
-        type: 'checkbox'
-    }, make_protocol('checkbox-newsletter'))
-    // ---------------------------------------------------------------
-    const checkbox_terms = i_input({
-        // name: 'checkbox-terms', 
-        // role: 'checkbox-terms', 
-        type: 'checkbox'
-    }, make_protocol('checkbox-terms'))
-// ---------------------------------------------------------------
+    }, make_protocol(`input-${count++}`))
     // content
     const content = bel`
         <div class=${css.content}>
-            <section> <h2>Text input</h2> ${text} </section>
-            <section> <h2>Number input</h2> ${number} </section>
-            <section> <h2>Decimal input</h2> ${decimal_number} </section>
-            <section> <h2>Checkbox newletter</h2> ${checkbox_newsletter} </section>
-            <section> <h2>Checkbox terms</h2> ${checkbox_terms} </section>
+            <section> <h2>Input 1</h2> ${input_1} </section>
+            <section> <h2>Input 2</h2> ${input_2} </section>
         </div>`
     const container = bel`<div class="${css.container}">${content}</div>`
-    const app = bel`<div class="${css.wrap}" data-state="debug"> ${container}${log_list} </div>`
+    const app = bel`<div class="${css.wrap}" data-state="debug"> ${container}</div>`
     return app
 }
 
