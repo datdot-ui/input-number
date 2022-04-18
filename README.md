@@ -15,4 +15,5 @@ Outgoing message types
 
 **parent**
 - `ready`
-- `input`
+- `onblur`
+- `onchange`

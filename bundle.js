@@ -27,10 +27,11 @@ function demo () {
         const { head, refs, type, data, meta } = msg // receive msg
         const [from, to, msg_id] = head
         inbox[head.join('/')] = msg                  // store msg
-        if (type === 'input') console.log({ input: data.value })
+        if (type === 'onblur') console.log({ input: data.value })
+        if (type === 'onkeyup') console.log({ input: data.value })
     }
 // ---------------------------------------------------------------
-    const number = input_number({
+    const input_1 = input_number({
         value: 15, 
         step: 1,
         placeholder: 'type the number', 
@@ -44,9 +45,9 @@ function demo () {
                 shadow_offset_xy: '4px 4px',
             }
         }
-    }, make_protocol('number'))
+    }, make_protocol(`input-${count++}`))
  // ---------------------------------------------------------------   
-    const decimal_number = input_number({
+    const input_2 = input_number({
         value: 10,
         step: 1.25,
         placeholder: 'Type the number',
@@ -60,12 +61,12 @@ function demo () {
             shadow_offset_xy: '4px 4px',
             }
         }
-    }, make_protocol('decimal number'))
+    }, make_protocol(`input-${count++}`))
     // content
     const content = bel`
         <div class=${css.content}>
-            <section> <h2>Number input</h2> ${number} </section>
-            <section> <h2>Decimal input</h2> ${decimal_number} </section>
+            <section> <h2>Input 1</h2> ${input_1} </section>
+            <section> <h2>Input 2</h2> ${input_2} </section>
         </div>`
     const container = bel`<div class="${css.container}">${content}</div>`
     const app = bel`<div class="${css.wrap}" data-state="debug"> ${container}</div>`
@@ -1335,53 +1336,50 @@ module.exports = i_input
 
 function i_input (opts, protocol) {
     const { value = 0, min = 0, max = 100, step = 1, placeholder = '', theme } = opts
-    const status = {}
+    var current_value = value
     let [int, dec] = split_val(step)
+    const el = document.createElement('i-input')
+    const shadow = el.attachShadow({mode: 'closed'})
+    const input = document.createElement('input')
 
-/* ------------------------------------------------
-                    <protocol>
------------------------------------------------- */
+// ------------------------------------------------
     const myaddress = `i-input-${id++}` // unique
     const inbox = {}
     const outbox = {}
     const recipients = {}
+    const names = {}
     const message_id = to => ( outbox[to] = 1 + (outbox[to]||0) )
 
     const {notify, address} = protocol(myaddress, listen)
+    names[address] = recipients['parent'] = { name: 'parent', notify, address, make: message_maker(myaddress) }
     recipients['parent'] = { notify, address, make: message_maker(myaddress) }
 
     let make = message_maker(myaddress) // @TODO: replace flow with myaddress/myaddress
-    let message = make({ to: address, type: 'ready' })
-    notify(message)
+    notify(make({ to: address, type: 'ready' }))
 
     function listen (msg) {
         const { head, refs, type, data, meta } = msg // listen to msg
         inbox[head.join('/')] = msg                  // store msg
         const [from, to, msg_id] = head
+        const { make } = recipients['parent']
         // todo: what happens when we receive the message
-        const { notify, make, address } = recipients['parent']
+        if (names[from].name === 'parent') {
+            current_value = data.value
+            input.value = current_value
+        }
     }
-/* ------------------------------------------------
-                    </protocol>
------------------------------------------------- */
-
-    const make_element = () => {
-        const el = document.createElement('i-input')
-        const shadow = el.attachShadow({mode: 'closed'})
-        const input = document.createElement('input')
-        set_attributes(el, input)
-        style_sheet(shadow, style)
-        shadow.append(input)
-        // handle events go here
-        input.onwheel = (e) => e.preventDefault()
-        input.onblur = (e) => handle_blur(e, input) // when element loses focus
-        // Safari doesn't support onfocus @TODO use select()
-        input.onclick = (e) => handle_click(e, input)
-        input.onfocus = (e) => handle_focus(e, input)
-        input.onkeydown = (e) => handle_keydown_change(e, input)
-        input.onkeyup = (e) => handle_keyup_change(e, input)
-        return el
-    }
+// ------------------------------------------------
+    set_attributes(el, input)
+    shadow.append(input)
+    // handle events go here
+    input.onwheel = (e) => e.preventDefault()
+    input.onblur = (e) => handle_blur(e, input) // when element loses focus
+    // Safari doesn't support onfocus @TODO use select()
+    input.onclick = (e) => handle_click(e, input)
+    input.onfocus = (e) => handle_focus(e, input)
+    input.onkeydown = (e) => handle_keydown_change(e, input)
+    input.onkeyup = (e) => handle_keyup_change(e, input)
+    input.onwheel = (e) => handle_wheel(e, input)
 // ---------------------------------------------------------------
     // all set attributes go here
     function set_attributes (el, input) {
@@ -1393,6 +1391,7 @@ function i_input (opts, protocol) {
         input.max = max
         // properties
         input.setAttribute('aria-myaddress', 'input')
+        input.setAttribute('class', theme.classList)
     }
     function increase (e, input, val) {
         e.preventDefault()
@@ -1408,8 +1407,10 @@ function i_input (opts, protocol) {
         }
         let new_val = new_val_d === 0 ? `${new_val_i}` : `${new_val_i}.${new_val_d}`
         input.value = new_val > max ? max.toString() : new_val
+        current_value = input.value
         console.log('step:', step_i, step_d);
         console.log('val:', val_i, val_d);
+        notify( make({to: address, type: 'onchange', data: { value: current_value }}))
     }
     function decrease (e, input, val) {
         e.preventDefault()
@@ -1427,18 +1428,33 @@ function i_input (opts, protocol) {
         }
         let new_val = new_val_d === 0 ? `${new_val_i}` : `${new_val_i}.${new_val_d}`
         input.value = new_val < min ? min.toString() : new_val
+        current_value = input.value
         console.log('step:', step_i, step_d);
         console.log('val:', val_i, val_d);
+        notify(make({to: address, type: 'onchange', data: { value: current_value }}))
     }
     // input click event
-    function handle_click (e, input) {}
+    function handle_click (e, input) {
+        e.target.select()
+    }
     // input focus event
     function handle_focus (e, input) {}
     // input blur event
     function handle_blur (e, input) {
         if (input.value === '') return
-        message = make({to: address, type: 'input', data: { value: input.value }})
-        notify(message)
+        notify(make({to: address, type: 'onblur', data: { value: current_value }}))
+    }
+
+    // handle scroll wheel
+    function handle_wheel (e, input) {
+        const target = e.target
+        const val = input.value === '' ? 0 : input.value
+        let mousewheelevt = (/Firefox/i.test(navigator.userAgent))? "DOMMouseScroll" : "mousewheel"
+        if (mousewheelevt === "mousewheel") {
+            e.wheelDelta > 0 ? increase(e, input, val) : decrease(e, input, val)
+        } else {
+            e.deltaY > 0 ?  increase(e, input, val) : decrease(e, input, val)
+        }
     }
 
     // input keydown event
@@ -1456,6 +1472,8 @@ function i_input (opts, protocol) {
         if (val < min || val > max) e.preventDefault()
         if (val > max) input.value = max
         if (val < min) input.value = min
+        current_value = input.value
+        notify(make({to: address, type: 'onchange', data: { value: current_value }}))
     }
 
     // helpers
@@ -1543,9 +1561,9 @@ function i_input (opts, protocol) {
     }
     ${custom_style}
     `
-    const element = make_element()
 // ---------------------------------------------------------------
-    return element
+    style_sheet(shadow, style)
+    return el
 // ---------------------------------------------------------------
 }
 

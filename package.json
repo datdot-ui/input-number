@@ -1,7 +1,7 @@
 {
-  "name": "datdot-ui-input",
-  "version": "0.0.1-alpha",
-  "description": "Input widget for datdot-ui",
+  "name": "datdot-ui-input-number",
+  "version": "0.0.2-alpha",
+  "description": "Input number for datdot-ui",
   "main": "src/index.js",
   "scripts": {
     "start": "budo demo/demo.js:bundle.js --open --live",
@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/datdot-ui/input.git"
+    "url": "git+https://github.com/datdot-ui/input-number.git"
   },
   "keywords": [
     "datdot",
@@ -21,19 +21,16 @@
   "author": "datdotorg",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/datdot-ui/input/issues"
+    "url": "https://github.com/datdot-ui/input-number/issues"
   },
-  "homepage": "https://github.com/datdot-ui/input#readme",
+  "homepage": "https://github.com/datdot-ui/input-number#readme",
   "devDependencies": {
     "browserify": "^17.0.0",
-    "budo": "^11.6.4",
-    "datdot-ui-logs": "github:datdot-ui/logs#v0.0.1-alpha"
+    "budo": "^11.7.0"
   },
   "dependencies": {
     "bel": "^6.0.0",
     "csjs-inject": "^1.0.1",
-    "datdot-ui-button": "github:datdot-ui/button#v0.0.1-alpha",
-    "datdot-ui-icon": "github:datdot-ui/icon#v0.0.1-alpha",
     "message-maker": "github:datdotorg/message-maker"
   }
 }

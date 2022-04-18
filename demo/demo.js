@@ -26,7 +26,8 @@ function demo () {
         const { head, refs, type, data, meta } = msg // receive msg
         const [from, to, msg_id] = head
         inbox[head.join('/')] = msg                  // store msg
-        if (type === 'input') console.log({ input: data.value })
+        if (type === 'onblur') console.log({ input: data.value })
+        if (type === 'onkeyup') console.log({ input: data.value })
     }
 // ---------------------------------------------------------------
     const input_1 = input_number({
