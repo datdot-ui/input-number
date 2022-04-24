@@ -28,8 +28,11 @@ function demo () {
         inbox[head.join('/')] = msg                  // store msg
         if (type === 'onblur') console.log({ input: data.value })
         if (type === 'onkeyup') console.log({ input: data.value })
+        if (type === 'help') { console.log({data})}
     }
 // ---------------------------------------------------------------
+    console.log(input_number.docs())
+    const name_1 = `input-${count++}`
     const input_1 = input_number({
         value: 15, 
         step: 1,
@@ -44,8 +47,12 @@ function demo () {
                 shadow_offset_xy: '4px 4px',
             }
         }
-    }, make_protocol(`input-${count++}`))
- // ---------------------------------------------------------------   
+    }, make_protocol(name_1))
+
+    const { notify: name_notify, make: name_make, address: name_address } = recipients[name_1]
+    name_notify(name_make({ to: name_address, type: 'help' }))
+ // ---------------------------------------------------------------
+    const name_2 = `input-${count++}`
     const input_2 = input_number({
         value: 10,
         step: 1.25,
@@ -60,7 +67,7 @@ function demo () {
             shadow_offset_xy: '4px 4px',
             }
         }
-    }, make_protocol(`input-${count++}`))
+    }, make_protocol(name_2))
     // content
     const content = bel`
         <div class=${css.content}>

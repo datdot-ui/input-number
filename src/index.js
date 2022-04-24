@@ -6,13 +6,13 @@ var id = 0
 module.exports = i_input
 
 function i_input (opts, protocol) {
+
     const { value = 0, min = 0, max = 100, step = 1, placeholder = '', theme } = opts
     var current_value = value
     let [int, dec] = split_val(step)
     const el = document.createElement('i-input')
     const shadow = el.attachShadow({mode: 'closed'})
     const input = document.createElement('input')
-
 // ------------------------------------------------
     const myaddress = `i-input-${id++}` // unique
     const inbox = {}
@@ -34,10 +34,15 @@ function i_input (opts, protocol) {
         const [from, to, msg_id] = head
         const { make } = recipients['parent']
         // todo: what happens when we receive the message
-        if (names[from].name === 'parent') {
+        const name = names[from].name
+        if (name === 'parent' && type === 'onchange') {
             current_value = data.value
             input.value = current_value
         }
+        if (type === 'help') {
+            const { notify: name_notify, make: name_make, address: name_address } = recipients[name]
+            name_notify(name_make({ to: name_address, type: 'help', data: { theme: current_theme }}))
+        } 
     }
 // ------------------------------------------------
     set_attributes(el, input)
@@ -170,7 +175,7 @@ function i_input (opts, protocol) {
            fill, fill_hover, icon_size, current_fill,
            shadow_color, shadow_offset_xy, shadow_blur, shadow_opacity,
            shadow_color_hover, shadow_offset_xy_hover, blur_hover, shadow_opacity_hover
-       } = theme.props
+       } = theme.props || default_theme_props
    }
 
 // ---------------------------------------------------------------
@@ -204,7 +209,7 @@ function i_input (opts, protocol) {
         max-width: 100%;
         display: grid;
     }
-    [type="text"], [type="number"] {
+    input {
         --shadow-opacity: 0;
         text-align: left;
         align-items: center;
@@ -218,22 +223,40 @@ function i_input (opts, protocol) {
         transition: font-size .3s, color .3s, background-color .3s, box-shadow .3s ease-in-out;
         outline: none;
         box-shadow: var(--shadow-xy) var(--shadow-blur) hsla( var(--shadow-color), var(--shadow-opacity));;
+        -moz-appearance: textfield;
     }
     :focus {
         --shadow-opacity: ${shadow_opacity ? shadow_opacity : '.3'};
         font-size: var(--current-size);
     }
-    [type="number"] {
-        -moz-appearance: textfield;
-    }
-    [type="number"]::-webkit-outer-spin-button, 
-    [type="number"]::-webkit-inner-spin-button {
+    input::-webkit-outer-spin-button, 
+    input::-webkit-inner-spin-button {
         -webkit-appearance: none;
     }
     ${custom_style}
     `
 // ---------------------------------------------------------------
     style_sheet(shadow, style)
+
+
     return el
 // ---------------------------------------------------------------
+}
+// Define/Docs
+
+var current_theme = {
+    props: {
+        border_width: '2px',
+        border_color: 'var(--color-blue)',
+        border_style: 'dashed',
+        shadow_color: 'var(--color-blue)',
+        shadow_opacity: '.65',
+        shadow_offset_xy: '4px 4px',
+    }
+}
+
+i_input.docs = () => {
+    return { 
+        opts: { value:0, min: 0, max: 100, step: 1, placeholder:'', theme: current_theme } 
+    }
 }
