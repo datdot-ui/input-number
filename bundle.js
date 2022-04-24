@@ -46,7 +46,13 @@ function demo () {
                 shadow_color: 'var(--color-blue)',
                 shadow_opacity: '.65',
                 shadow_offset_xy: '4px 4px',
-            }
+            },
+            style: `
+                .input-field {
+                    background-color: pink;
+                }
+            `,
+            classList: 'input-field'
         }
     }, make_protocol(name_1))
 
@@ -60,20 +66,16 @@ function demo () {
         placeholder: 'Type the number',
         theme: {
             props: {
-            border_width: '2px',
-            border_color: 'var(--color-blue)',
-            border_style: 'dashed',
-            shadow_color: 'var(--color-blue)',
-            shadow_opacity: '.65',
-            shadow_offset_xy: '4px 4px',
+    
             }
         }
     }, make_protocol(name_2))
-    // content
+    
+    
     const content = bel`
         <div class=${css.content}>
             <section> <h2>Input 1</h2> ${input_1} </section>
-            <section> <h2>Input 2</h2> ${input_2} </section>
+            <section> <h2>Input 1</h2> ${input_2} </section>
         </div>`
     const container = bel`<div class="${css.container}">${content}</div>`
     const app = bel`<div class="${css.wrap}" data-state="debug"> ${container}</div>`
@@ -1342,7 +1344,6 @@ var id = 0
 module.exports = i_input
 
 function i_input (opts, protocol) {
-
     const { value = 0, min = 0, max = 100, step = 1, placeholder = '', theme } = opts
     var current_value = value
     let [int, dec] = split_val(step)
@@ -1403,7 +1404,7 @@ function i_input (opts, protocol) {
         input.max = max
         // properties
         input.setAttribute('aria-myaddress', 'input')
-        input.setAttribute('class', theme.classList)
+        if (theme.classList) input.setAttribute('class', theme.classList)
     }
     function increase (e, input, val) {
         e.preventDefault()
@@ -1499,7 +1500,7 @@ function i_input (opts, protocol) {
     }
     
    // insert CSS style
-   const custom_style = theme ? theme.style : ''
+   const custom_style = theme?.style || ''
    // set CSS variables
    if (theme && theme.props) {
        var {size, size_hover, current_size,
@@ -1588,7 +1589,13 @@ var current_theme = {
         shadow_color: 'var(--color-blue)',
         shadow_opacity: '.65',
         shadow_offset_xy: '4px 4px',
-    }
+    },
+    style: `
+        .input-field {
+            background-color: pink;
+        }
+    `,
+    classList: 'input-field'
 }
 
 i_input.docs = () => {
@@ -1603,6 +1610,7 @@ function support_style_sheet (root, style) {
     return (() => {
         try {
             const sheet = new CSSStyleSheet()
+            console.log(style)
             sheet.replaceSync(style)
             root.adoptedStyleSheets = [sheet]
             return true 
