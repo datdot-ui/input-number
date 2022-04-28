@@ -29,6 +29,7 @@ function demo () {
         if (type === 'onblur') console.log({ input: data.value })
         if (type === 'onkeyup') console.log({ input: data.value })
         if (type === 'help') { console.log({data})}
+        if (type === 'theme_update') {}
     }
 // ---------------------------------------------------------------
     console.log(input_number.docs())
@@ -39,12 +40,12 @@ function demo () {
         placeholder: 'type the number', 
         theme: {
             props: {
-                border_width: '2px',
-                border_color: 'var(--color-blue)',
-                border_style: 'dashed',
-                shadow_color: 'var(--color-blue)',
-                shadow_opacity: '.65',
-                shadow_offset_xy: '4px 4px',
+                '--border-width': '2px',
+                '--border-color': 'var(--color-blue)',
+                '--border-style': 'dashed',
+                '--shadow-color': 'var(--color-blue)',
+                '--shadow-opacity': '.65',
+                '--shadow-xy': '4px 4px',
             },
             style: `
                 .input-field {

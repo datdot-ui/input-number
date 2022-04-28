@@ -1,10 +1,67 @@
 const style_sheet = require('support-style-sheet')
 const message_maker = require('message-maker')
+const csjs = require('csjs-inject')
 
 var id = 0
 
 module.exports = i_input
 
+// Define/Docs
+var current_theme
+var current_style
+const default_theme = {
+    props: {
+        '--b': '0, 0%',
+        '--r': '100%, 50%',
+        '--color-white': 'var(--b), 100%',
+        '--color-black': 'var(--b), 0%',
+        '--color-blue': '214, var(--r)',
+        '--size14': '1.4rem',
+        '--size16': '1.6rem',
+        '--weight200': '200',
+        '--primary-color': 'var(--color-black)',
+        '--primary-button-radius': '8px',
+        '--size': 'var(--size14)',
+        '--size-hover': 'var(--size)',
+        '--current-size': 'var(--size)',
+        '--bold': 'var(--weight200)',
+        '--color':'var(--primary-color)',
+        '--bg-color': 'var(--color-white)',
+        '--width': 'unset',
+        '--height': '32px',
+        '--opacity': '1',
+        '--padding': '8px 12px',
+        '--border-width': '0px',
+        '--border-style': 'solid',
+        '--border-color': 'var(--primary-color)',
+        '--border-opacity': '1',
+        '--border': 'var(--border-width) var(--border-style) hsla(var(--border-color), var(--border-opacity))',
+        '--border-radius': 'var(--primary-button-radius)',
+        '--fill': 'var(--primary-color)',
+        '--fill-hover': 'var(--color-white)',
+        '--icon-size': 'var(--size16)',
+        '--shadow-xy': '0 0',
+        '--shadow-blur': '8px',
+        '--shadow-color': 'var(--color-black)',
+        '--shadow-opacity': '0',
+        '--shadow-opacity-focus': '0.3',
+    },
+    style: `
+        .input-field {
+            background-color: pink;
+        }
+    `,
+    classList: 'input-field'
+}
+
+i_input.docs = () => {
+    return { 
+        opts: { value:0, min: 0, max: 100, step: 1, placeholder:'', theme: default_theme },
+        current_style
+    }
+}
+
+// Define input number function
 function i_input (opts, protocol) {
     const { value = 0, min = 0, max = 100, step = 1, placeholder = '', theme } = opts
     var current_value = value
@@ -12,6 +69,8 @@ function i_input (opts, protocol) {
     const el = document.createElement('i-input')
     const shadow = el.attachShadow({mode: 'closed'})
     const input = document.createElement('input')
+    current_theme = theme
+    update_style(current_theme, shadow)
 // ------------------------------------------------
     const myaddress = `i-input-${id++}` // unique
     const inbox = {}
@@ -40,8 +99,12 @@ function i_input (opts, protocol) {
         }
         if (type === 'help') {
             const { notify: name_notify, make: name_make, address: name_address } = recipients[name]
-            name_notify(name_make({ to: name_address, type: 'help', data: { theme: current_theme }}))
-        } 
+            name_notify(name_make({ to: name_address, type: 'help', data: { theme: current_theme }, refs: { cause: head }}))
+        }
+        else if (type === 'theme_update' && data.theme) {
+            current_theme = JSON.parse(data.theme.replace(/\n/g, ''))
+            update_style(current_theme, shadow)
+        }
     }
 // ------------------------------------------------
     set_attributes(el, input)
@@ -66,7 +129,6 @@ function i_input (opts, protocol) {
         input.max = max
         // properties
         input.setAttribute('aria-myaddress', 'input')
-        if (theme.classList) input.setAttribute('class', theme.classList)
     }
     function increase (e, input, val) {
         e.preventDefault()
@@ -119,7 +181,6 @@ function i_input (opts, protocol) {
         if (input.value === '') return
         notify(make({to: address, type: 'onblur', data: { value: current_value }}))
     }
-
     // handle scroll wheel
     function handle_wheel (e, input) {
         const target = e.target
@@ -131,7 +192,6 @@ function i_input (opts, protocol) {
             e.deltaY > 0 ?  increase(e, input, val) : decrease(e, input, val)
         }
     }
-
     // input keydown event
     function handle_keydown_change (e, input) {
         const val = input.value === '' ? 0 : input.value
@@ -141,7 +201,6 @@ function i_input (opts, protocol) {
         if (code === 38 || key === 'ArrowUp') increase(e, input, val)
         if (code === 40 || key === 'ArrowDown' ) decrease(e, input, val)
     }
-
     function handle_keyup_change (e, input) {
         const val = input.value === '' ? 0 : input.value
         if (val < min || val > max) e.preventDefault()
@@ -150,9 +209,7 @@ function i_input (opts, protocol) {
         current_value = input.value
         notify(make({to: address, type: 'onchange', data: { value: current_value }}))
     }
-
     // helpers
-
     function split_val (val) {
         let [i, d] = val.toString().split('.')
         // if (i or d) === undefined, make d euqal to 0
@@ -160,108 +217,63 @@ function i_input (opts, protocol) {
         if (d === void 0) d = '0'
         return [i, d]
     }
-    
-   // insert CSS style
-   const custom_style = theme?.style || ''
-   // set CSS variables
-   if (theme && theme.props) {
-       var {size, size_hover, current_size,
-           weight, weight_hover, current_weight,
-           color, color_hover, current_color, current_bg_color, 
-           bg_color, bg_color_hover, border_color_hover,
-           border_width, border_style, border_opacity, border_color, border_radius, 
-           padding, width, height, opacity,
-           fill, fill_hover, icon_size, current_fill,
-           shadow_color, shadow_offset_xy, shadow_blur, shadow_opacity,
-           shadow_color_hover, shadow_offset_xy_hover, blur_hover, shadow_opacity_hover
-       } = theme.props || default_theme_props
-   }
+    // style
+    // const css = csjs`
+    // :root {
+    //     --b: 0, 0%;
+    //     --r: 100%, 50%;
+    //     --color-white: var(--b), 100%;
+    //     --color-black: var(--b), 0%;
+    //     --color-blue: 214, var(--r);
+    //     --size14: 1.4rem;
+    //     --size16: 1.6rem;
+    //     --weight200: 200;
+    //     --primary-color: var(--color-black);
+    //     --primary-button-radius: 8px;
+    // }
+    // `
+    function update_style (current_theme, shadow) {
+        const { style: custom_style = '', props = {}, grid = {}, classList = '' } = current_theme
+        if (current_theme.classList?.length) input.setAttribute('class', current_theme.classList)
+
+        current_style =  `
+        :host(i-input) {
+          ${Object.keys(default_theme.props).map(key => `${key}: ${props[key] || default_theme.props[key]};`).join('\n')}
+          width: var(--width);
+          max-width: 100%;
+          display: grid;
+        }
+        input {
+            --shadow-opacity: 0;
+            text-align: left;
+            align-items: center;
+            font-size: var(--size);
+            font-weight: var(--bold);
+            color: hsl( var(--color) );
+            background-color: hsla( var(--bg-color), var(--opacity) );
+            border: var(--border);
+            border-radius: var(--border-radius);
+            padding: var(--padding);
+            transition: font-size .3s, color .3s, background-color .3s, box-shadow .3s ease-in-out;
+            outline: none;
+            box-shadow: var(--shadow-xy) var(--shadow-blur) hsla( var(--shadow-color), var(--shadow-opacity));;
+            -moz-appearance: textfield;
+        }
+        :focus {
+            --shadow-opacity: var(--shadow-opacity-focus);
+            font-size: var(--current-size);
+        }
+        input::-webkit-outer-spin-button, 
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+        }
+        ${custom_style}
+        `
+        style_sheet(shadow, current_style)
+    }
 
 // ---------------------------------------------------------------
-    const style = `
-    :host(i-input) {
-        --size: ${size ? size : 'var(--size14)'};
-        --size-hover: ${size_hover ? size_hover : 'var(--size)'};
-        --current-size: ${current_size ? current_size : 'var(--size)'};
-        --bold: ${weight ? weight : 'normal'};
-        --color: ${color ? color : 'var(--primary-color)'};
-        --bg-color: ${bg_color ? bg_color : 'var(--color-white)'};
-        --width: ${width ? width : 'unset'};
-        --height: ${height ? height : '32px'};
-        --opacity: ${opacity ? opacity : '1'};
-        --padding: ${padding ? padding : '8px 12px'};
-        --border-width: ${border_width ? border_width : '0px'};
-        --border-style: ${border_style ? border_style : 'solid'};
-        --border-color: ${border_color ? border_color : 'var(--primary-color)'};
-        --border-opacity: ${border_opacity ? border_opacity : '1'};
-        --border: var(--border-width) var(--border-style) hsla( var(--border-color), var(--border-opacity) );
-        --border-radius: ${border_radius ? border_radius : 'var(--primary-button-radius)'};
-        --fill: ${fill ? fill : 'var(--primary-color)'};
-        --fill-hover: ${fill_hover ? fill_hover : 'var(--color-white)'};
-        --icon-size: ${icon_size ? icon_size : '16px'};
-        --shadow-xy: ${shadow_offset_xy ? shadow_offset_xy : '0 0'};
-        --shadow-blur: ${shadow_blur ? shadow_blur : '8px'};
-        --shadow-color: ${shadow_color ? shadow_color : 'var(--color-black)'};
-        --shadow-opacity: ${shadow_opacity ? shadow_opacity : '0.25'};
-        ${width && 'width: var(--width)'};
-        height: var(--height);
-        max-width: 100%;
-        display: grid;
-    }
-    input {
-        --shadow-opacity: 0;
-        text-align: left;
-        align-items: center;
-        font-size: var(--size);
-        font-weight: var(--bold);
-        color: hsl( var(--color) );
-        background-color: hsla( var(--bg-color), var(--opacity) );
-        border: var(--border);
-        border-radius: var(--border-radius);
-        padding: var(--padding);
-        transition: font-size .3s, color .3s, background-color .3s, box-shadow .3s ease-in-out;
-        outline: none;
-        box-shadow: var(--shadow-xy) var(--shadow-blur) hsla( var(--shadow-color), var(--shadow-opacity));;
-        -moz-appearance: textfield;
-    }
-    :focus {
-        --shadow-opacity: ${shadow_opacity ? shadow_opacity : '.3'};
-        font-size: var(--current-size);
-    }
-    input::-webkit-outer-spin-button, 
-    input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-    }
-    ${custom_style}
-    `
-// ---------------------------------------------------------------
-    style_sheet(shadow, style)
-
-
     return el
 // ---------------------------------------------------------------
 }
-// Define/Docs
 
-var current_theme = {
-    props: {
-        border_width: '2px',
-        border_color: 'var(--color-blue)',
-        border_style: 'dashed',
-        shadow_color: 'var(--color-blue)',
-        shadow_opacity: '.65',
-        shadow_offset_xy: '4px 4px',
-    },
-    style: `
-        .input-field {
-            background-color: pink;
-        }
-    `,
-    classList: 'input-field'
-}
-
-i_input.docs = () => {
-    return { 
-        opts: { value:0, min: 0, max: 100, step: 1, placeholder:'', theme: current_theme } 
-    }
-}
