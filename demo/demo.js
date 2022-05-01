@@ -1,7 +1,6 @@
 const head = require('head')()
 const bel = require('bel')
 const csjs = require('csjs-inject')
-// datdot-ui dependences
 const input_number = require('..')
 const message_maker = require('message-maker')
 
@@ -46,13 +45,7 @@ function demo () {
                 '--shadow-color': 'var(--color-blue)',
                 '--shadow-opacity': '.65',
                 '--shadow-xy': '4px 4px',
-            },
-            style: `
-                .input-field {
-                    background-color: pink;
-                }
-            `,
-            classList: 'input-field'
+            }
         }
     }, make_protocol(name_1))
 
@@ -64,13 +57,7 @@ function demo () {
         value: 10,
         step: 1.25,
         placeholder: 'Type the number',
-        theme: {
-            props: {
-    
-            }
-        }
     }, make_protocol(name_2))
-    
     
     const content = bel`
         <div class=${css.content}>
@@ -81,7 +68,6 @@ function demo () {
     const app = bel`<div class="${css.wrap}" data-state="debug"> ${container}</div>`
     return app
 }
-
 // ---------------------------------------------------------------
 const css = csjs`
 :root {

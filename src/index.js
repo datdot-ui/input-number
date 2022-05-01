@@ -1,12 +1,10 @@
 const style_sheet = require('support-style-sheet')
 const message_maker = require('message-maker')
-const csjs = require('csjs-inject')
 
 var id = 0
 
 module.exports = i_input
 
-// Define/Docs
 var current_theme
 var current_style
 const default_theme = {
@@ -54,16 +52,10 @@ const default_theme = {
     classList: 'input-field'
 }
 
-i_input.docs = () => {
-    return { 
-        opts: { value:0, min: 0, max: 100, step: 1, placeholder:'', theme: default_theme },
-        current_style
-    }
-}
+i_input.docs = () => { return { opts: { value:0, min: 0, max: 100, step: 1, placeholder:'', theme: default_theme } } }
 
-// Define input number function
 function i_input (opts, protocol) {
-    const { value = 0, min = 0, max = 100, step = 1, placeholder = '', theme } = opts
+    const { value = 0, min = 0, max = 100, step = 1, placeholder = '', theme = {} } = opts
     var current_value = value
     let [int, dec] = split_val(step)
     const el = document.createElement('i-input')
@@ -109,7 +101,6 @@ function i_input (opts, protocol) {
 // ------------------------------------------------
     set_attributes(el, input)
     shadow.append(input)
-    // handle events go here
     input.onwheel = (e) => e.preventDefault()
     input.onblur = (e) => handle_blur(e, input) // when element loses focus
     // Safari doesn't support onfocus @TODO use select()
@@ -119,15 +110,13 @@ function i_input (opts, protocol) {
     input.onkeyup = (e) => handle_keyup_change(e, input)
     input.onwheel = (e) => handle_wheel(e, input)
 // ---------------------------------------------------------------
-    // all set attributes go here
-    function set_attributes (el, input) {
+    function set_attributes (el, input) { // all set attributes go here
         input.type = 'number'
         input.name = myaddress
         input.value = value
         input.placeholder = placeholder
         input.min = min
         input.max = max
-        // properties
         input.setAttribute('aria-myaddress', 'input')
     }
     function increase (e, input, val) {
@@ -145,8 +134,6 @@ function i_input (opts, protocol) {
         let new_val = new_val_d === 0 ? `${new_val_i}` : `${new_val_i}.${new_val_d}`
         input.value = new_val > max ? max.toString() : new_val
         current_value = input.value
-        console.log('step:', step_i, step_d);
-        console.log('val:', val_i, val_d);
         notify( make({to: address, type: 'onchange', data: { value: current_value }}))
     }
     function decrease (e, input, val) {
@@ -166,33 +153,22 @@ function i_input (opts, protocol) {
         let new_val = new_val_d === 0 ? `${new_val_i}` : `${new_val_i}.${new_val_d}`
         input.value = new_val < min ? min.toString() : new_val
         current_value = input.value
-        console.log('step:', step_i, step_d);
-        console.log('val:', val_i, val_d);
         notify(make({to: address, type: 'onchange', data: { value: current_value }}))
     }
-    // input click event
-    function handle_click (e, input) {
-        e.target.select()
-    }
-    // input focus event
+    // event handlers
+    function handle_click (e, input) { e.target.select() }
     function handle_focus (e, input) {}
-    // input blur event
     function handle_blur (e, input) {
         if (input.value === '') return
         notify(make({to: address, type: 'onblur', data: { value: current_value }}))
     }
-    // handle scroll wheel
     function handle_wheel (e, input) {
         const target = e.target
         const val = input.value === '' ? 0 : input.value
         let mousewheelevt = (/Firefox/i.test(navigator.userAgent))? "DOMMouseScroll" : "mousewheel"
-        if (mousewheelevt === "mousewheel") {
-            e.wheelDelta > 0 ? increase(e, input, val) : decrease(e, input, val)
-        } else {
-            e.deltaY > 0 ?  increase(e, input, val) : decrease(e, input, val)
-        }
+        if (mousewheelevt === "mousewheel") e.wheelDelta > 0 ? increase(e, input, val) : decrease(e, input, val)
+        else e.deltaY > 0 ?  increase(e, input, val) : decrease(e, input, val)
     }
-    // input keydown event
     function handle_keydown_change (e, input) {
         const val = input.value === '' ? 0 : input.value
         const key = e.key
@@ -209,33 +185,9 @@ function i_input (opts, protocol) {
         current_value = input.value
         notify(make({to: address, type: 'onchange', data: { value: current_value }}))
     }
-    // helpers
-    function split_val (val) {
-        let [i, d] = val.toString().split('.')
-        // if (i or d) === undefined, make d euqal to 0
-        if (i === '') i = '0'
-        if (d === void 0) d = '0'
-        return [i, d]
-    }
-    // style
-    // const css = csjs`
-    // :root {
-    //     --b: 0, 0%;
-    //     --r: 100%, 50%;
-    //     --color-white: var(--b), 100%;
-    //     --color-black: var(--b), 0%;
-    //     --color-blue: 214, var(--r);
-    //     --size14: 1.4rem;
-    //     --size16: 1.6rem;
-    //     --weight200: 200;
-    //     --primary-color: var(--color-black);
-    //     --primary-button-radius: 8px;
-    // }
-    // `
     function update_style (current_theme, shadow) {
         const { style: custom_style = '', props = {}, grid = {}, classList = '' } = current_theme
         if (current_theme.classList?.length) input.setAttribute('class', current_theme.classList)
-
         current_style =  `
         :host(i-input) {
           ${Object.keys(default_theme.props).map(key => `${key}: ${props[key] || default_theme.props[key]};`).join('\n')}
@@ -270,6 +222,15 @@ function i_input (opts, protocol) {
         ${custom_style}
         `
         style_sheet(shadow, current_style)
+    }
+
+    // helpers
+    function split_val (val) {
+        let [i, d] = val.toString().split('.')
+        // if (i or d) === undefined, make d euqal to 0
+        if (i === '') i = '0'
+        if (d === void 0) d = '0'
+        return [i, d]
     }
 
 // ---------------------------------------------------------------
