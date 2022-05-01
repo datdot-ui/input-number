@@ -31,7 +31,7 @@ function demo () {
         if (type === 'theme_update') {}
     }
 // ---------------------------------------------------------------
-    console.log(input_number.docs())
+    console.log(input_number.help())
     const name_1 = `input-${count++}`
     const input_1 = input_number({
         value: 15, 

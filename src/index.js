@@ -5,8 +5,6 @@ var id = 0
 
 module.exports = i_input
 
-var current_theme
-var current_style
 const default_theme = {
     props: {
         '--b': '0, 0%',
@@ -52,17 +50,26 @@ const default_theme = {
     classList: 'input-field'
 }
 
-i_input.docs = () => { return { opts: { value:0, min: 0, max: 100, step: 1, placeholder:'', theme: default_theme } } }
+i_input.help = () => { return { opts: { value:0, min: 0, max: 100, step: 1, placeholder:'', theme: default_theme } } }
 
 function i_input (opts, protocol) {
     const { value = 0, min = 0, max = 100, step = 1, placeholder = '', theme = {} } = opts
-    var current_value = value
+    const state = {
+        opts: {
+            value,
+            min,
+            max,
+            step,
+            placeholder,
+            theme,
+        },
+        style: ``,
+    }
     let [int, dec] = split_val(step)
     const el = document.createElement('i-input')
     const shadow = el.attachShadow({mode: 'closed'})
     const input = document.createElement('input')
-    current_theme = theme
-    update_style(current_theme, shadow)
+    update_style(state.opts.theme, shadow)
 // ------------------------------------------------
     const myaddress = `i-input-${id++}` // unique
     const inbox = {}
@@ -86,16 +93,16 @@ function i_input (opts, protocol) {
         // todo: what happens when we receive the message
         const name = names[from].name
         if (name === 'parent' && type === 'onchange') {
-            current_value = data.value
-            input.value = current_value
+            state.opts.value = data.value
+            input.value = state.opts.value
         }
         if (type === 'help') {
             const { notify: name_notify, make: name_make, address: name_address } = recipients[name]
-            name_notify(name_make({ to: name_address, type: 'help', data: { theme: current_theme }, refs: { cause: head }}))
+            name_notify(name_make({ to: name_address, type: 'help', data: { state }, refs: { cause: head }}))
         }
         else if (type === 'theme_update' && data.theme) {
-            current_theme = JSON.parse(data.theme.replace(/\n/g, ''))
-            update_style(current_theme, shadow)
+            state.opts.theme = JSON.parse(data.theme.replace(/\n/g, ''))
+            update_style(state.opts.theme, shadow)
         }
     }
 // ------------------------------------------------
@@ -133,8 +140,8 @@ function i_input (opts, protocol) {
         }
         let new_val = new_val_d === 0 ? `${new_val_i}` : `${new_val_i}.${new_val_d}`
         input.value = new_val > max ? max.toString() : new_val
-        current_value = input.value
-        notify( make({to: address, type: 'onchange', data: { value: current_value }}))
+        state.opts.value = input.value
+        notify( make({to: address, type: 'onchange', data: { value: state.opts.value }}))
     }
     function decrease (e, input, val) {
         e.preventDefault()
@@ -152,15 +159,15 @@ function i_input (opts, protocol) {
         }
         let new_val = new_val_d === 0 ? `${new_val_i}` : `${new_val_i}.${new_val_d}`
         input.value = new_val < min ? min.toString() : new_val
-        current_value = input.value
-        notify(make({to: address, type: 'onchange', data: { value: current_value }}))
+        state.opts.value = input.value
+        notify(make({to: address, type: 'onchange', data: { value: state.opts.value }}))
     }
     // event handlers
     function handle_click (e, input) { e.target.select() }
     function handle_focus (e, input) {}
     function handle_blur (e, input) {
         if (input.value === '') return
-        notify(make({to: address, type: 'onblur', data: { value: current_value }}))
+        notify(make({to: address, type: 'onblur', data: { value: state.opts.value }}))
     }
     function handle_wheel (e, input) {
         const target = e.target
@@ -182,13 +189,13 @@ function i_input (opts, protocol) {
         if (val < min || val > max) e.preventDefault()
         if (val > max) input.value = max
         if (val < min) input.value = min
-        current_value = input.value
-        notify(make({to: address, type: 'onchange', data: { value: current_value }}))
+        state.opts.value = input.value
+        notify(make({to: address, type: 'onchange', data: { value: state.opts.value }}))
     }
-    function update_style (current_theme, shadow) {
-        const { style: custom_style = '', props = {}, grid = {}, classList = '' } = current_theme
-        if (current_theme.classList?.length) input.setAttribute('class', current_theme.classList)
-        current_style =  `
+    function update_style (theme, shadow) {
+        const { style: custom_style = '', props = {}, grid = {}, classList = '' } = theme
+        if (theme.classList?.length) input.setAttribute('class', theme.classList)
+        state.style =  `
         :host(i-input) {
           ${Object.keys(default_theme.props).map(key => `${key}: ${props[key] || default_theme.props[key]};`).join('\n')}
           width: var(--width);
@@ -221,7 +228,7 @@ function i_input (opts, protocol) {
         }
         ${custom_style}
         `
-        style_sheet(shadow, current_style)
+        style_sheet(shadow, state.style)
     }
 
     // helpers
