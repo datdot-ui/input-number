@@ -31,6 +31,6 @@
   "dependencies": {
     "bel": "^6.0.0",
     "csjs-inject": "^1.0.1",
-    "message-maker": "github:datdotorg/message-maker"
+    "protocol-maker": "github:datdotorg/protocol-maker#v0.0.1-alpha"
   }
 }

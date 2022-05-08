@@ -2,29 +2,17 @@ const head = require('head')()
 const bel = require('bel')
 const csjs = require('csjs-inject')
 const input_number = require('..')
-const message_maker = require('message-maker')
+const protocol_maker = require('protocol-maker')
 
 var id = 0
 var count = 0
 
 function demo () {
 // ---------------------------------------------------------------
-    const myaddress = `demo-${id++}`
-    const inbox = {}
-    const outbox = {}
-    let recipients = {}
-    const message_id = to => ( outbox[to] = 1 + (outbox[to]||0) )
-
-    function make_protocol (name) {
-        return function protocol (address, notify) {
-            recipients[name] = { address, notify, make: message_maker(myaddress) }
-            return { notify: listen, address: myaddress }
-        }
-    }
+    const contacts = protocol_maker('demo', listen)
     function listen (msg) {
         const { head, refs, type, data, meta } = msg // receive msg
         const [from, to, msg_id] = head
-        inbox[head.join('/')] = msg                  // store msg
         if (type === 'onblur') console.log({ input: data.value })
         if (type === 'onkeyup') console.log({ input: data.value })
         if (type === 'help') { console.log({data})}
@@ -47,9 +35,9 @@ function demo () {
                 '--shadow-xy': '4px 4px',
             }
         }
-    }, make_protocol(name_1))
+    }, contacts.add(name_1))
 
-    const { notify: name_notify, make: name_make, address: name_address } = recipients[name_1]
+    const { notify: name_notify, make: name_make, address: name_address } = contacts.by_name[name_1]
     name_notify(name_make({ to: name_address, type: 'help' }))
  // ---------------------------------------------------------------
     const name_2 = `input-${count++}`
@@ -57,7 +45,7 @@ function demo () {
         value: 10,
         step: 1.25,
         placeholder: 'Type the number',
-    }, make_protocol(name_2))
+    }, contacts.add(name_2))
     
     const content = bel`
         <div class=${css.content}>

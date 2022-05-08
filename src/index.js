@@ -1,5 +1,5 @@
 const style_sheet = require('support-style-sheet')
-const message_maker = require('message-maker')
+const protocol_maker = require('protocol-maker')
 
 var id = 0
 
@@ -52,7 +52,7 @@ const default_theme = {
 
 i_input.help = () => { return { opts: { value:0, min: 0, max: 100, step: 1, placeholder:'', theme: default_theme } } }
 
-function i_input (opts, protocol) {
+function i_input (opts, parent_wire) {
     const { value = 0, min = 0, max = 100, step = 1, placeholder = '', theme = {} } = opts
     const state = {
         opts: {
@@ -71,34 +71,22 @@ function i_input (opts, protocol) {
     const input = document.createElement('input')
     update_style(state.opts.theme, shadow)
 // ------------------------------------------------
-    const myaddress = `i-input-${id++}` // unique
-    const inbox = {}
-    const outbox = {}
-    const recipients = {}
-    const names = {}
-    const message_id = to => ( outbox[to] = 1 + (outbox[to]||0) )
 
-    const {notify, address} = protocol(myaddress, listen)
-    names[address] = recipients['parent'] = { name: 'parent', notify, address, make: message_maker(myaddress) }
-    recipients['parent'] = { notify, address, make: message_maker(myaddress) }
-
-    let make = message_maker(myaddress) // @TODO: replace flow with myaddress/myaddress
-    notify(make({ to: address, type: 'ready' }))
-
+    const initial_contacts = { 'parent': parent_wire }
+    const contacts = protocol_maker('input-number', listen, initial_contacts)
     function listen (msg) {
         const { head, refs, type, data, meta } = msg // listen to msg
-        inbox[head.join('/')] = msg                  // store msg
         const [from, to, msg_id] = head
-        const { make } = recipients['parent']
+        const { make } = contacts.by_name['parent']
         // todo: what happens when we receive the message
-        const name = names[from].name
+        const name = contacts.by_address[from].name
         if (name === 'parent' && type === 'onchange') {
             state.opts.value = data.value
             input.value = state.opts.value
         }
         if (type === 'help') {
-            const { notify: name_notify, make: name_make, address: name_address } = recipients[name]
-            name_notify(name_make({ to: name_address, type: 'help', data: { state }, refs: { cause: head }}))
+            const $from = contacts.by_address[from]
+            $from.notify($from.make({ to: $from.address, type: 'help', data: { state }, refs: { cause: head }}))
         }
         else if (type === 'theme_update' && data.theme) {
             state.opts.theme = JSON.parse(data.theme.replace(/\n/g, ''))
@@ -119,7 +107,7 @@ function i_input (opts, protocol) {
 // ---------------------------------------------------------------
     function set_attributes (el, input) { // all set attributes go here
         input.type = 'number'
-        input.name = myaddress
+        input.name = 'input-number'
         input.value = value
         input.placeholder = placeholder
         input.min = min
@@ -141,7 +129,8 @@ function i_input (opts, protocol) {
         let new_val = new_val_d === 0 ? `${new_val_i}` : `${new_val_i}.${new_val_d}`
         input.value = new_val > max ? max.toString() : new_val
         state.opts.value = input.value
-        notify( make({to: address, type: 'onchange', data: { value: state.opts.value }}))
+        const $parent = contacts.by_name['parent']
+        $parent.notify($parent.make({to: $parent.address, type: 'onchange', data: { value: state.opts.value }}))
     }
     function decrease (e, input, val) {
         e.preventDefault()
@@ -160,14 +149,16 @@ function i_input (opts, protocol) {
         let new_val = new_val_d === 0 ? `${new_val_i}` : `${new_val_i}.${new_val_d}`
         input.value = new_val < min ? min.toString() : new_val
         state.opts.value = input.value
-        notify(make({to: address, type: 'onchange', data: { value: state.opts.value }}))
+        const $parent = contacts.by_name['parent']
+        $parent.notify($parent.make({to: $parent.address, type: 'onchange', data: { value: state.opts.value }}))
     }
     // event handlers
     function handle_click (e, input) { e.target.select() }
     function handle_focus (e, input) {}
     function handle_blur (e, input) {
         if (input.value === '') return
-        notify(make({to: address, type: 'onblur', data: { value: state.opts.value }}))
+        const $parent = contacts.by_name['parent']
+        $parent.notify($parent.make({to: $parent.address, type: 'onblur', data: { value: state.opts.value }}))
     }
     function handle_wheel (e, input) {
         const target = e.target
@@ -190,7 +181,8 @@ function i_input (opts, protocol) {
         if (val > max) input.value = max
         if (val < min) input.value = min
         state.opts.value = input.value
-        notify(make({to: address, type: 'onchange', data: { value: state.opts.value }}))
+        const $parent = contacts.by_name['parent']
+        $parent.notify($parent.make({to: $parent.address, type: 'onchange', data: { value: state.opts.value }}))
     }
     function update_style (theme, shadow) {
         const { style: custom_style = '', props = {}, grid = {}, classList = '' } = theme
