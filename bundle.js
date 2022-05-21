@@ -38,8 +38,8 @@ function demo () {
         }
     }, contacts.add(name_1))
 
-    const { notify: name_notify, make: name_make, address: name_address } = contacts.by_name[name_1]
-    name_notify(name_make({ to: name_address, type: 'help' }))
+    const $name = contacts.by_name[name_1]
+    $name.notify($name.make({ to: $name.address, type: 'help' }))
  // ---------------------------------------------------------------
     const name_2 = `input-${count++}`
     const input_2 = input_number({
@@ -220,7 +220,7 @@ body {
 document.body.append(demo())
 // ---------------------------------------------------------------
 
-},{"..":27,"bel":4,"csjs-inject":7,"head":2,"protocol-maker":30}],2:[function(require,module,exports){
+},{"..":29,"bel":4,"csjs-inject":7,"head":2,"protocol-maker":25}],2:[function(require,module,exports){
 module.exports = head
 
 function head (lang = 'utf8', title = 'Input - DatDot UI') {
@@ -464,7 +464,7 @@ module.exports = hyperx(belCreateElement, {comments: true})
 module.exports.default = module.exports
 module.exports.createElement = belCreateElement
 
-},{"./appendChild":3,"hyperx":25}],5:[function(require,module,exports){
+},{"./appendChild":3,"hyperx":27}],5:[function(require,module,exports){
 (function (global){(function (){
 'use strict';
 
@@ -483,7 +483,7 @@ function csjsInserter() {
 module.exports = csjsInserter;
 
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"csjs":10,"insert-css":26}],6:[function(require,module,exports){
+},{"csjs":10,"insert-css":28}],6:[function(require,module,exports){
 'use strict';
 
 module.exports = require('csjs/get-css');
@@ -961,6 +961,147 @@ function scopify(css, ignores) {
 }
 
 },{"./regex":20,"./replace-animations":21,"./scoped-name":22}],24:[function(require,module,exports){
+module.exports = function message_maker (from) {
+  let msg_id = 0
+  return function make ({to, type, data = null, refs = {} }) {
+      const stack = (new Error().stack.split('\n').slice(2).filter(x => x.trim()))
+      return { head: [from, to, msg_id++], refs, type, data, meta: { stack }}
+  }
+}
+},{}],25:[function(require,module,exports){
+// const path = require('path')
+// const filename = path.basename(__filename)
+const message_maker = require('message-maker')
+// const message_id = to => (outbox[to] = 1 + (outbox[to]||0))
+
+module.exports = protocol_maker
+
+const routes = {}
+var id = 0
+
+function protocol_maker (type, listen, initial_contacts = {}) {
+  if (!type || typeof type !== 'string') throw new Error('invalid type')
+  const myaddress = id++
+
+  const inbox = {}
+  const outbox = {}
+
+  const by_name = {}
+  const by_address = {}
+  const contacts = { add, by_name, by_address, cut, on }
+  
+  const keys = Object.keys(initial_contacts)
+  for (var i = 0, len = keys.length; i < len; i++) {
+    const name = keys[i]
+    const wire = initial_contacts[name]
+    // @INFO: perspective of sub instance:
+    const { notify, address } = wire(myaddress, wrap_listen(listen))    
+    const contact = {
+      name,
+      address,
+      // path: `${myaddress}/${name}`,
+      notify: wrap_notify(notify),
+      make: message_maker(myaddress)
+    }
+    by_name[name] = by_address[address] = contact // new Promise(resolve => resolve(contact))
+  }
+  return contacts
+  function on (listener) {
+    // @NOTE: to listen to any "default protocol events" supported by any protocol, e.g. help
+    // maybe also: 'connect', or 'disconnect'
+    throw new Error ('`on` is not yet implemented')
+    return function off () {}
+  }
+  function cut (wire) { throw new Error ('`cut` is not yet implemented')}
+  function add (name) {
+    // @INFO: perspective of instance:
+    if (!name || typeof name !== 'string') throw new Error('invalid name')
+    if (by_name[name]) throw new Error('name already exists')
+    const wait = {}
+    by_name[name] = { name, make: message_maker(myaddress) } // new Promise((resolve, reject) => { wait.resolve = resolve; wait.reject = reject })
+    return function wire (address, notify) {
+      const contact = {
+        // @TODO: add queryable "routes" and allow lookup `by_route[route]`       
+        name, // a nickname dev gives to a component
+        address, // an address app makes for each component
+        // TODO: address will become "name" (like type) compared to nickname
+        // address: something new, based on e.g. filepath or browserified bundle.js:22:42 etc.. to give actual globally unique identifier
+        notify: wrap_notify(notify),
+        make: message_maker(myaddress)
+      }
+      // wait.resolve(contact)
+      by_name[name].address = address
+      by_name[name].notify = wrap_notify(notify)
+      by_address[address] = contact // new Promise(resolve => resolve(contact))
+      return { notify: wrap_listen(listen), address: myaddress }
+    }
+  }
+  function wrap_notify (notify) {
+    return message => {
+      outbox[message.head.join('/')] = message  // store message
+      return notify(message)
+    }
+  }
+  function wrap_listen (listen) {
+    return message => {
+      inbox[message.head.join('/')] = message  // store message
+      return listen(message)
+    }
+  }
+}
+/*
+const name_routes = [
+  "root/",
+  "root/el:demo/",
+  "root/el:demo/cpu:range-slider/",
+  "root/el:demo/cpu:range-slider/%:input-number/",
+  "root/el:demo/ram:range-slider/",
+  "root/el:demo/ram:range-slider/GB:input-number/",
+  "root/el:demo/upload:range-slider/",
+  "root/el:demo/upload:range-slider/MB:input-number/",
+  "root/el:demo/download:range-slider/",
+  "root/el:demo/download:range-slider/MB:input-number/",  
+]
+// --------------------------------------------------
+const name_routes = {
+    root: {
+        "el:demo": {
+            "cpu:range-slider": {
+                "%:input-number": {}
+            },
+            "ram:range-slider": {
+                "GB:input-number": {}
+            },
+            "download:range-slider": {
+                "MB:input-number": {}
+            },
+            "upload:range-slider": {
+                "MB:input-number": {}
+            },
+        },
+    },
+}
+// --------------------------------------------------
+const name_routes = {
+    root: {
+        "el": {
+            "cpu": {
+                "%": {}
+            },
+            "ram": {
+                "GB": {}
+            },
+            "download": {
+                "MB": {}
+            },
+            "upload": {
+                "MB": {}
+            },
+        },
+    },
+}
+*/
+},{"message-maker":24}],26:[function(require,module,exports){
 module.exports = attributeToProperty
 
 var transform = {
@@ -981,7 +1122,7 @@ function attributeToProperty (h) {
   }
 }
 
-},{}],25:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 var attrToProp = require('hyperscript-attribute-to-property')
 
 var VAR = 0, TEXT = 1, OPEN = 2, CLOSE = 3, ATTR = 4
@@ -1278,7 +1419,7 @@ var closeRE = RegExp('^(' + [
 ].join('|') + ')(?:[\.#][a-zA-Z0-9\u007F-\uFFFF_:-]+)*$')
 function selfClosing (tag) { return closeRE.test(tag) }
 
-},{"hyperscript-attribute-to-property":24}],26:[function(require,module,exports){
+},{"hyperscript-attribute-to-property":26}],28:[function(require,module,exports){
 var inserted = {};
 
 module.exports = function (css, options) {
@@ -1302,7 +1443,7 @@ module.exports = function (css, options) {
     }
 };
 
-},{}],27:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 const style_sheet = require('support-style-sheet')
 const protocol_maker = require('protocol-maker')
 
@@ -1543,7 +1684,7 @@ function i_input (opts, parent_wire) {
 }
 
 
-},{"protocol-maker":30,"support-style-sheet":28}],28:[function(require,module,exports){
+},{"protocol-maker":25,"support-style-sheet":30}],30:[function(require,module,exports){
 module.exports = support_style_sheet
 function support_style_sheet (root, style) {
     return (() => {
@@ -1559,145 +1700,4 @@ function support_style_sheet (root, style) {
         }
     })()
 }
-},{}],29:[function(require,module,exports){
-module.exports = function message_maker (from) {
-  let msg_id = 0
-  return function make ({to, type, data = null, refs = {} }) {
-      const stack = (new Error().stack.split('\n').slice(2).filter(x => x.trim()))
-      return { head: [from, to, msg_id++], refs, type, data, meta: { stack }}
-  }
-}
-},{}],30:[function(require,module,exports){
-// const path = require('path')
-// const filename = path.basename(__filename)
-const message_maker = require('message-maker')
-// const message_id = to => (outbox[to] = 1 + (outbox[to]||0))
-
-module.exports = protocol_maker
-
-const routes = {}
-var id = 0
-
-function protocol_maker (type, listen, initial_contacts = {}) {
-  if (!type || typeof type !== 'string') throw new Error('invalid type')
-  const myaddress = id++
-
-  const inbox = {}
-  const outbox = {}
-
-  const by_name = {}
-  const by_address = {}
-  const contacts = { add, by_name, by_address, cut, on }
-  
-  const keys = Object.keys(initial_contacts)
-  for (var i = 0, len = keys.length; i < len; i++) {
-    const name = keys[i]
-    const wire = initial_contacts[name]
-    // @INFO: perspective of sub instance:
-    const { notify, address } = wire(myaddress, wrap_listen(listen))    
-    const contact = {
-      name,
-      address,
-      // path: `${myaddress}/${name}`,
-      notify: wrap_notify(notify),
-      make: message_maker(myaddress)
-    }
-    by_name[name] = by_address[address] = contact // new Promise(resolve => resolve(contact))
-  }
-  return contacts
-  function on (listener) {
-    // @NOTE: to listen to any "default protocol events" supported by any protocol, e.g. help
-    // maybe also: 'connect', or 'disconnect'
-    throw new Error ('`on` is not yet implemented')
-    return function off () {}
-  }
-  function cut (wire) { throw new Error ('`cut` is not yet implemented')}
-  function add (name) {
-    // @INFO: perspective of instance:
-    if (!name || typeof name !== 'string') throw new Error('invalid name')
-    if (by_name[name]) throw new Error('name already exists')
-    const wait = {}
-    by_name[name] = { name, make: message_maker(myaddress) } // new Promise((resolve, reject) => { wait.resolve = resolve; wait.reject = reject })
-    return function wire (address, notify) {
-      const contact = {
-        // @TODO: add queryable "routes" and allow lookup `by_route[route]`       
-        name, // a nickname dev gives to a component
-        address, // an address app makes for each component
-        // TODO: address will become "name" (like type) compared to nickname
-        // address: something new, based on e.g. filepath or browserified bundle.js:22:42 etc.. to give actual globally unique identifier
-        notify: wrap_notify(notify),
-        make: message_maker(myaddress)
-      }
-      // wait.resolve(contact)
-      by_name[name].address = address
-      by_name[name].notify = wrap_notify(notify)
-      by_address[address] = contact // new Promise(resolve => resolve(contact))
-      return { notify: wrap_listen(listen), address: myaddress }
-    }
-  }
-  function wrap_notify (notify) {
-    return message => {
-      outbox[message.head.join('/')] = message  // store message
-      return notify(message)
-    }
-  }
-  function wrap_listen (listen) {
-    return message => {
-      inbox[message.head.join('/')] = message  // store message
-      return listen(message)
-    }
-  }
-}
-/*
-const name_routes = [
-  "root/",
-  "root/el:demo/",
-  "root/el:demo/cpu:range-slider/",
-  "root/el:demo/cpu:range-slider/%:input-number/",
-  "root/el:demo/ram:range-slider/",
-  "root/el:demo/ram:range-slider/GB:input-number/",
-  "root/el:demo/upload:range-slider/",
-  "root/el:demo/upload:range-slider/MB:input-number/",
-  "root/el:demo/download:range-slider/",
-  "root/el:demo/download:range-slider/MB:input-number/",  
-]
-// --------------------------------------------------
-const name_routes = {
-    root: {
-        "el:demo": {
-            "cpu:range-slider": {
-                "%:input-number": {}
-            },
-            "ram:range-slider": {
-                "GB:input-number": {}
-            },
-            "download:range-slider": {
-                "MB:input-number": {}
-            },
-            "upload:range-slider": {
-                "MB:input-number": {}
-            },
-        },
-    },
-}
-// --------------------------------------------------
-const name_routes = {
-    root: {
-        "el": {
-            "cpu": {
-                "%": {}
-            },
-            "ram": {
-                "GB": {}
-            },
-            "download": {
-                "MB": {}
-            },
-            "upload": {
-                "MB": {}
-            },
-        },
-    },
-}
-*/
-},{"message-maker":29}]},{},[1]);
+},{}]},{},[1]);

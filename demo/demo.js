@@ -37,8 +37,8 @@ function demo () {
         }
     }, contacts.add(name_1))
 
-    const { notify: name_notify, make: name_make, address: name_address } = contacts.by_name[name_1]
-    name_notify(name_make({ to: name_address, type: 'help' }))
+    const $name = contacts.by_name[name_1]
+    $name.notify($name.make({ to: $name.address, type: 'help' }))
  // ---------------------------------------------------------------
     const name_2 = `input-${count++}`
     const input_2 = input_number({
