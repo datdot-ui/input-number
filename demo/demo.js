@@ -13,28 +13,59 @@ function demo () {
     function listen (msg) {
         const { head, refs, type, data, meta } = msg // receive msg
         const [from, to, msg_id] = head
-        if (type === 'onblur') console.log({ input: data.value })
-        if (type === 'onkeyup') console.log({ input: data.value })
+        const $from = contacts.by_address[from]
+        if (type === 'onchange') {
+            let sheets
+            const new_theme = `
+            input {
+                background-color: red;
+            }`
+            if (Number(data.value) === 100) {
+                if (contacts.by_address[from].name === 'input-0') sheets = [0, 1, new_theme]
+                else sheets = [0, new_theme]
+                $from.notify($from.make({ to: $from.address, type: 'update', data: { sheets } }))  
+            } else {
+                if (contacts.by_address[from].name === 'input-0') sheets = [0, 1]
+                else sheets = [0]
+                $from.notify($from.make({ to: $from.address, type: 'update', data: { sheets } }))  
+            }
+        }
+        if (type === 'onkeyup') { console.log({data})}
         if (type === 'help') { console.log({data})}
-        if (type === 'theme_update') {}
     }
 // ---------------------------------------------------------------
     console.log(input_number.help())
     const name_1 = `input-${count++}`
     const input_1 = input_number({
+        name: 'input-number',
         value: 15, 
-        step: 1,
-        placeholder: 'type the number', 
-        theme: {
-            props: {
-                '--border-width': '2px',
-                '--border-color': 'var(--color-blue)',
-                '--border-style': 'dashed',
-                '--shadow-color': 'var(--color-blue)',
-                '--shadow-opacity': '.65',
-                '--shadow-xy': '4px 4px',
+        step: 2.55,
+        placeholder: 'type the number',
+        theme: `
+            :host(i-input-number) {
+                --color-blue: 214, 100%, 49%;
+                --border-width: 2px;
+                --border-style: dashed;
+                --border-color: var(--color-blue);
+                --primary-button-radius: 8px;
+                --border-opacity: 1;
+                --border: var(--border-width) var(--border-style) hsla(var(--border-color), var(--border-opacity));
+                --border-radius: var(--primary-button-radius);
+                --shadow-color: var(--color-blue);
+                --shadow-xy: 4px 4px;
+                --shadow-opacity: .65;
+                --shadow-blur: 8px;
+                --shadow-opacity-focus: 0.3;
             }
-        }
+            input {
+                border: var(--border);
+                border-radius: var(--border-radius);
+                background-color: pink;
+            }
+            input:focus {
+                --shadow-opacity: var(--shadow-opacity-focus);
+            }
+        `
     }, contacts.add(name_1))
 
     const $name = contacts.by_name[name_1]
@@ -42,8 +73,9 @@ function demo () {
  // ---------------------------------------------------------------
     const name_2 = `input-${count++}`
     const input_2 = input_number({
+        name: 'input-number',
         value: 10,
-        step: 1.25,
+        step: 0.25,
         placeholder: 'Type the number',
     }, contacts.add(name_2))
     

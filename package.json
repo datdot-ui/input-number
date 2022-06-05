@@ -1,7 +1,7 @@
 {
   "name": "datdot-ui-input-number",
-  "version": "0.0.2-alpha",
-  "description": "Input number for datdot-ui",
+  "version": "0.0.4-alpha",
+  "description": "vanilla js input number component",
   "main": "src/index.js",
   "scripts": {
     "start": "budo demo/demo.js:bundle.js --open --live",
@@ -18,7 +18,7 @@
     "widget",
     "input"
   ],
-  "author": "datdotorg",
+  "author": "ninabreznik",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/datdot-ui/input-number/issues"

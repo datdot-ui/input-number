@@ -1,101 +1,71 @@
-const style_sheet = require('support-style-sheet')
 const protocol_maker = require('protocol-maker')
 
 var id = 0
-
-module.exports = i_input
-
-const default_theme = {
-    props: {
-        '--b': '0, 0%',
-        '--r': '100%, 50%',
-        '--color-white': 'var(--b), 100%',
-        '--color-black': 'var(--b), 0%',
-        '--color-blue': '214, var(--r)',
-        '--size14': '1.4rem',
-        '--size16': '1.6rem',
-        '--weight200': '200',
-        '--primary-color': 'var(--color-black)',
-        '--primary-button-radius': '8px',
-        '--size': 'var(--size14)',
-        '--size-hover': 'var(--size)',
-        '--current-size': 'var(--size)',
-        '--bold': 'var(--weight200)',
-        '--color':'var(--primary-color)',
-        '--bg-color': 'var(--color-white)',
-        '--width': 'unset',
-        '--height': '32px',
-        '--opacity': '1',
-        '--padding': '8px 12px',
-        '--border-width': '0px',
-        '--border-style': 'solid',
-        '--border-color': 'var(--primary-color)',
-        '--border-opacity': '1',
-        '--border': 'var(--border-width) var(--border-style) hsla(var(--border-color), var(--border-opacity))',
-        '--border-radius': 'var(--primary-button-radius)',
-        '--fill': 'var(--primary-color)',
-        '--fill-hover': 'var(--color-white)',
-        '--icon-size': 'var(--size16)',
-        '--shadow-xy': '0 0',
-        '--shadow-blur': '8px',
-        '--shadow-color': 'var(--color-black)',
-        '--shadow-opacity': '0',
-        '--shadow-opacity-focus': '0.3',
-    },
-    style: `
-        .input-field {
-            background-color: pink;
-        }
-    `,
-    classList: 'input-field'
+const sheet = new CSSStyleSheet()
+const default_opts = { 
+	name: 'i-input-number',
+    value: 0,
+    min: 0,
+    max: 100,
+    step: 1,
+    placeholder: '',
+	theme: get_theme()
 }
+sheet.replaceSync(default_opts.theme)
 
-i_input.help = () => { return { opts: { value:0, min: 0, max: 100, step: 1, placeholder:'', theme: default_theme } } }
+module.exports = input_number
 
-function i_input (opts, parent_wire) {
-    const { value = 0, min = 0, max = 100, step = 1, placeholder = '', theme = {} } = opts
-    const state = {
-        opts: {
-            value,
-            min,
-            max,
-            step,
-            placeholder,
-            theme,
-        },
-        style: ``,
-    }
-    let [int, dec] = split_val(step)
-    const el = document.createElement('i-input')
-    const shadow = el.attachShadow({mode: 'closed'})
-    const input = document.createElement('input')
-    update_style(state.opts.theme, shadow)
-// ------------------------------------------------
+input_number.help = () => { return { opts: default_opts } }
 
+function input_number (opts, parent_wire) {
+    const {
+        name = default_opts.name, 
+        value = default_opts.value, 
+        min = default_opts.min, 
+        max = default_opts.max, 
+        step = default_opts.step, 
+        placeholder = default_opts.placeholder, 
+        theme = `` } = opts
+
+    const current_state =  { opts: { name, value, min, max, step, placeholder, sheets: [default_opts.theme, theme] } }
+        
+    // protocol
     const initial_contacts = { 'parent': parent_wire }
     const contacts = protocol_maker('input-number', listen, initial_contacts)
     function listen (msg) {
         const { head, refs, type, data, meta } = msg // listen to msg
         const [from, to, msg_id] = head
-        const { make } = contacts.by_name['parent']
+        const $parents = contacts.by_name['parent']
         // todo: what happens when we receive the message
         const name = contacts.by_address[from].name
-        if (name === 'parent' && type === 'onchange') {
-            state.opts.value = data.value
-            input.value = state.opts.value
-        }
         if (type === 'help') {
             const $from = contacts.by_address[from]
-            $from.notify($from.make({ to: $from.address, type: 'help', data: { state }, refs: { cause: head }}))
+            $from.notify($from.make({ to: $from.address, type: 'help', data: { state: get_current_state() }, refs: { cause: head }}))
         }
-        else if (type === 'theme_update' && data.theme) {
-            state.opts.theme = JSON.parse(data.theme.replace(/\n/g, ''))
-            update_style(state.opts.theme, shadow)
-        }
+        else if (type === 'update') handle_update(data)
     }
-// ------------------------------------------------
-    set_attributes(el, input)
+
+    // make input number
+    const el = document.createElement('i-input-number')
+    const shadow = el.attachShadow({mode: 'closed'})
+    const input = document.createElement('input')
+
+    // set attributes
+    input.type = 'number'
+    input.name = name
+    input.value = value
+    input.placeholder = placeholder
+    input.min = min
+    input.max = max
+    input.setAttribute('aria-myaddress', 'input')
+
     shadow.append(input)
+    
+		const custom_theme = new CSSStyleSheet()
+		custom_theme.replaceSync(theme)
+		shadow.adoptedStyleSheets = [sheet, custom_theme]
+
+    // add event listeners
     input.onwheel = (e) => e.preventDefault()
     input.onblur = (e) => handle_blur(e, input) // when element loses focus
     // Safari doesn't support onfocus @TODO use select()
@@ -104,61 +74,17 @@ function i_input (opts, parent_wire) {
     input.onkeydown = (e) => handle_keydown_change(e, input)
     input.onkeyup = (e) => handle_keyup_change(e, input)
     input.onwheel = (e) => handle_wheel(e, input)
-// ---------------------------------------------------------------
-    function set_attributes (el, input) { // all set attributes go here
-        input.type = 'number'
-        input.name = 'input-number'
-        input.value = value
-        input.placeholder = placeholder
-        input.min = min
-        input.max = max
-        input.setAttribute('aria-myaddress', 'input')
-    }
-    function increase (e, input, val) {
-        e.preventDefault()
-        let [step_i, step_d] = split_val(step)
-        let [val_i, val_d] = split_val(input.value)
-        var new_val_d = Number(val_d) + Number(step_d)
-        var new_val_i = Number(val_i) + Number(step_i)
-        const d_places = step_d > val_d ? step_d.length : val_d.length
-        const d_full = Math.pow(10, d_places)
-        if (new_val_d >= d_full) {
-            new_val_d = new_val_d - d_full
-            new_val_i = new_val_i + 1
-        }
-        let new_val = new_val_d === 0 ? `${new_val_i}` : `${new_val_i}.${new_val_d}`
-        input.value = new_val > max ? max.toString() : new_val
-        state.opts.value = input.value
-        const $parent = contacts.by_name['parent']
-        $parent.notify($parent.make({to: $parent.address, type: 'onchange', data: { value: state.opts.value }}))
-    }
-    function decrease (e, input, val) {
-        e.preventDefault()
-        let [step_i, step_d] = split_val(step)
-        let [val_i, val_d] = split_val(val)
-        let step_len = step_d.length
-        let val_len = val_d.length
-        var new_val_d = Number(val_d) - Number(step_d)
-        var new_val_i = Number(val_i) - Number(step_i)
-        const d_places = step_d > val_d ? step_d.length : val_d.length
-        const d_full = Math.pow(10, d_places)
-        if (new_val_d <= 0) {
-            new_val_d = new_val_d === 0 ? 0 : d_full + new_val_d
-            new_val_i = new_val_i - 1
-        }
-        let new_val = new_val_d === 0 ? `${new_val_i}` : `${new_val_i}.${new_val_d}`
-        input.value = new_val < min ? min.toString() : new_val
-        state.opts.value = input.value
-        const $parent = contacts.by_name['parent']
-        $parent.notify($parent.make({to: $parent.address, type: 'onchange', data: { value: state.opts.value }}))
-    }
+
+		return el
+
     // event handlers
     function handle_click (e, input) { e.target.select() }
     function handle_focus (e, input) {}
     function handle_blur (e, input) {
         if (input.value === '') return
+				current_state.opts.value = input.value
         const $parent = contacts.by_name['parent']
-        $parent.notify($parent.make({to: $parent.address, type: 'onblur', data: { value: state.opts.value }}))
+        $parent.notify($parent.make({to: $parent.address, type: 'onblur', data: { value: current_state.opts.value }}))
     }
     function handle_wheel (e, input) {
         const target = e.target
@@ -180,50 +106,68 @@ function i_input (opts, parent_wire) {
         if (val < min || val > max) e.preventDefault()
         if (val > max) input.value = max
         if (val < min) input.value = min
-        state.opts.value = input.value
+        current_state.opts.value = input.value
         const $parent = contacts.by_name['parent']
-        $parent.notify($parent.make({to: $parent.address, type: 'onchange', data: { value: state.opts.value }}))
+        $parent.notify($parent.make({to: $parent.address, type: 'onchange', data: { value: current_state.opts.value }}))
     }
-    function update_style (theme, shadow) {
-        const { style: custom_style = '', props = {}, grid = {}, classList = '' } = theme
-        if (theme.classList?.length) input.setAttribute('class', theme.classList)
-        state.style =  `
-        :host(i-input) {
-          ${Object.keys(default_theme.props).map(key => `${key}: ${props[key] || default_theme.props[key]};`).join('\n')}
-          width: var(--width);
-          max-width: 100%;
-          display: grid;
-        }
-        input {
-            --shadow-opacity: 0;
-            text-align: left;
-            align-items: center;
-            font-size: var(--size);
-            font-weight: var(--bold);
-            color: hsl( var(--color) );
-            background-color: hsla( var(--bg-color), var(--opacity) );
-            border: var(--border);
-            border-radius: var(--border-radius);
-            padding: var(--padding);
-            transition: font-size .3s, color .3s, background-color .3s, box-shadow .3s ease-in-out;
-            outline: none;
-            box-shadow: var(--shadow-xy) var(--shadow-blur) hsla( var(--shadow-color), var(--shadow-opacity));;
-            -moz-appearance: textfield;
-        }
-        :focus {
-            --shadow-opacity: var(--shadow-opacity-focus);
-            font-size: var(--current-size);
-        }
-        input::-webkit-outer-spin-button, 
-        input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-        }
-        ${custom_style}
-        `
-        style_sheet(shadow, state.style)
-    }
+		function handle_update (data) {
+			const { value, min, max, placeholder, sheets } = data
+			if (value) {
+				current_state.opts.value = data.value
+				input.value = current_state.opts.value
+			}
+			if (sheets) {
+				const new_sheets = sheets.map(sheet => {
+					if (typeof sheet === 'string') {
+						current_state.opts.sheets.push(sheet)
+						const new_sheet = new CSSStyleSheet()
+						new_sheet.replaceSync(sheet)
+						return new_sheet
+						} 
+						if (typeof sheet === 'number') return shadow.adoptedStyleSheets[sheet]
+				})
+				shadow.adoptedStyleSheets = new_sheets
+			}
+		}
 
-    // helpers
+   // helpers
+   function increase (e, input, val) {
+        e.preventDefault()
+        let [step_i, step_d] = split_val(step)
+        let [val_i, val_d] = split_val(input.value)
+        var new_val_d = Number(val_d) + Number(step_d)
+        var new_val_i = Number(val_i) + Number(step_i)
+        const d_places = step_d > val_d ? step_d.length : val_d.length
+        const d_full = Math.pow(10, d_places)
+        if (new_val_d >= d_full) {
+            new_val_d = new_val_d - d_full
+            new_val_i = new_val_i + 1
+        }
+        let new_val = new_val_d === 0 ? `${new_val_i}` : `${new_val_i}.${new_val_d}`
+        input.value = new_val > max ? max.toString() : new_val
+        current_state.opts.value = input.value
+        const $parent = contacts.by_name['parent']
+        $parent.notify($parent.make({to: $parent.address, type: 'onchange', data: { value: current_state.opts.value }}))
+    }
+    function decrease (e, input, val) {
+        e.preventDefault()
+        let [step_i, step_d] = split_val(step)
+        let [val_i, val_d] = split_val(val)
+        var new_val_d = Number(val_d) - Number(step_d)
+        var new_val_i = Number(val_i) - Number(step_i)
+				console.log('STEP', step_i, step_d, 'VALUE', val_i, val_d, 'NEW', new_val_d, new_val_i)
+        const d_places = step_d > val_d ? step_d.length : val_d.length
+        const d_full = Math.pow(10, d_places)
+        if (new_val_d < 0) {
+            new_val_d = new_val_d === 0 ? 0 : d_full + new_val_d
+            new_val_i = new_val_i - 1
+        }
+        let new_val = new_val_d === 0 ? `${new_val_i}` : `${new_val_i}.${new_val_d}`
+        input.value = new_val < min ? min.toString() : new_val
+        current_state.opts.value = input.value
+        const $parent = contacts.by_name['parent']
+        $parent.notify($parent.make({to: $parent.address, type: 'onchange', data: { value: current_state.opts.value }}))
+    }
     function split_val (val) {
         let [i, d] = val.toString().split('.')
         // if (i or d) === undefined, make d euqal to 0
@@ -232,8 +176,85 @@ function i_input (opts, parent_wire) {
         return [i, d]
     }
 
-// ---------------------------------------------------------------
-    return el
-// ---------------------------------------------------------------
+		// get current state
+		function get_current_state () {
+			return  {
+				opts: current_state.opts,
+				contacts
+			}
+		}
 }
 
+function get_theme () {
+	return `
+	:host(i-input-number) {
+		--b: 0, 0%;
+		--r: 100%; 50%;
+		--color-white: var(--b); 100%;
+		--color-black: var(--b); 0%;
+		--color-blue: 214; var(--r);
+		--size14: 1.4rem;
+		--size16: 1.6rem;
+		--weight200: 200;
+		--weight800: 800;
+		--primary-color: var(--color-black);
+		--primary-button-radius: 8px;
+		--primary-bg-color: var(--color-white);
+		--size: var(--size14);
+		--size-hover: var(--size);
+		--current-size: var(--size);
+		--bold: var(--weight200);
+		--color:var(--primary-color);
+		--bg-color: var(--primary-bg-color);
+		--primary-color-hover: var(--color-white);
+		--width: unset;
+		--height: 32px;
+		--opacity: 1;
+		--padding: 8px 12px;
+		--border-width: 1px;
+		--border-style: solid;
+		--border-color: var(--primary-color);
+		--border-opacity: 1;
+		--border-radius: var(--primary-button-radius);
+		--border: var(--border-width) var(--border-style) hsla(var(--border-color), var(--border-opacity));
+		--fill: var(--primary-color);
+		--fill-hover: var(--color-white);
+		--icon-size: var(--size16);
+		--shadow-xy: 0 0;
+		--shadow-blur: 8px;
+		--shadow-color: var(--primary-color-hover);
+		--shadow-opacity: 0;
+		--shadow-opacity-focus: 0.3;
+		--padding: 8px 12px;
+		--size: var(--primary-size);
+		--bold: var(--weight800);
+		--color: var(--primary-color);
+		--opacity: 1;
+		--shadow-opacity: 0;
+		max-width: 100%;
+		display: grid;
+	}
+	input {
+		--shadow-opacity: 0;
+		text-align: left;
+		align-items: center;
+		font-size: var(--size);
+		font-weight: var(--bold);
+		color: hsl( var(--color) );
+		padding: var(--padding);
+		transition: font-size .3s, color .3s, background-color .3s, box-shadow .3s ease-in-out;
+		outline: none;
+		box-shadow: var(--shadow-xy) var(--shadow-blur) hsla( var(--shadow-color), var(--shadow-opacity));;
+		-moz-appearance: textfield;
+		border: var(--border);
+		border-radius: var(--border-radius);
+	}
+	:focus {
+			--shadow-opacity: var(--shadow-opacity-focus);
+			font-size: var(--current-size);
+	}
+	input::-webkit-outer-spin-button, 
+	input::-webkit-inner-spin-button {
+			-webkit-appearance: none;
+	}`
+}

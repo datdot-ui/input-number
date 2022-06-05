@@ -4,16 +4,18 @@ DatDot UI component
 Opts
 ---
 
-`{value = 0, min = 0, max = 100, step = 1, placeholder = '', theme}`
+`{ name = 'input-number', value = 0, min = 0, max = 100, step = 1, placeholder = '', theme = default_theme }`
 
 
-Incomming message types
+Incoming message types
 ---
+- `help` requests info on current state
+- `update`
 
 Outgoing message types
 ---
 
 **parent**
-- `ready`
+- `help` sends info on current state 
+- `onchange` updates any of the data sent `{ value, min, max, placeholder, sheets }`
 - `onblur`
-- `onchange`
